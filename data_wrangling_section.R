@@ -259,9 +259,9 @@ cps1988_a <- cps1988 %>% select(contains("a"))
 cps1988_e <- cps1988 %>% select(ends_with("e"))
 
 
-#----------------------------------
-#         right_joint()
-#----------------------------------
+#-----------------------------------------
+#     right_joint() / inner_joint()
+#----------------------------------------
 
 # Đọc dữ liệu từ wt16.dta: 
 library(haven)
@@ -316,6 +316,9 @@ total_df <- right_join(my_vhlss, province_code, by = "tinh")
 # Xem qua: 
 total_df %>% head()
 
+# Có thể sử dụng inner_joint(): 
+total_df_c2 <- inner_join(my_vhlss, province_code, by = "tinh")
+
 
 # Phương án 2 là viết hàm thêm số 0 (trình bày kĩ hơn ở phần viết hàm): 
 
@@ -325,22 +328,173 @@ add_zero <- function(x) {
             str_count(x) == 2 ~ x)
 }
 
-#----------------------------------------------------------
-#  Mini Project 1 (PISA data - In Class): summarise_each()
-#----------------------------------------------------------
+#------------------------
+#   summarise_each()
+#------------------------
 
 # Load dữ liệu: 
 pisa <- read.csv("D:/GSO_R_Course/data_for_wrangling/PISA DATA (INTERNATIONAL).CSV", 
                  stringsAsFactors = FALSE)
 
+# Xem qua dữ liệu: 
+pisa %>% dim()
+pisa %>% str()
+
+# Lấy ra một số cột biến: 
+pisa_small <- pisa %>% select(Country = CNT, 
+                              Gender = ST04Q01, 
+                              MATH, SCIE, READ)
+
+# Các thống kê cơ bản chung về điểm toán: 
+
+pisa_small %>% 
+  summarise_each(funs(mean, median, sd, min, max), MATH)
+
+# Các thống kê tương ứng với từng quốc gia cho điêm Toán
+# và sắp xếp theo chiều giảm dần của điểm trung bình: 
+
+pisa_small %>% 
+  group_by(Country) %>% 
+  summarise_each(funs(mean, median, sd, min, max), MATH) %>% 
+  arrange(-mean)
+
+
 #----------------------------------------------------
-#       Mini Project 2 (In Class) flights.csv
+#       Mini Project 1 (Class Room) flights.csv
 #----------------------------------------------------
 
-fligh_df <- read_csv("D:/GSO_R_Course/data_for_wrangling/flights.csv")
+# Đọc dữ liệu và xem qua: 
+fligh_df <- read_csv("D:/GSO_R_Course/data_for_wrangling/flights_revised.csv") 
+fligh_df %>% dim()
+fligh_df %>% str()
+
+# Kiểm tra dữ liệu thiếu. Trước hết viết hàm kiểm tra dữ liệu thiếu: 
+
+na_number <- function(x) {x %>% is.na() %>% sum()}
+sapply(fligh_df, na_number) # Cách 1. 
+fligh_df %>% summarise_all(na_number)
+
+# Tạm thời chấp nhận phương án bỏ dữ liệu thiếu: 
+fligh_df_full <- fligh_df %>% na.omit()
+fligh_df_full %>% dim()
+
+# Tên (kí hiệu) của các hãng hàng không: 
+fligh_df$carrier %>% unique()
+
+# Số hãng hàng không có trong bộ dữ liệu: 
+fligh_df_full$carrier %>% unique() %>% length()
+fligh_df_full$carrier %>% n_distinct()
+
+# Chuyến bay có thời gian cất cánh sớm nhất - muộn nhất theo từng hãng: 
+fligh_df_full %>% 
+  group_by(carrier) %>% 
+  top_n(1, dep_delay) %>% 
+  select(dep_delay, carrier) %>% 
+  arrange(-dep_delay) # Cất cánh muộn. 
+
+fligh_df_full %>% 
+  group_by(carrier) %>% 
+  top_n(1, -dep_delay) %>% 
+  select(dep_delay, carrier) %>% 
+  arrange(dep_delay) # Cất cánh sớm. 
+
+# 5 hãng hàng không có nhiều và ít nhất các chuyến bay: 
+fligh_df_full %>% 
+  group_by(carrier) %>% 
+  count() %>% 
+  arrange(-n) ->> number_flight
+
+number_flight
+
+# Thị phần của các hãng hàng không: 
+number_flight %<>% mutate(market_share = n / nrow(fligh_df_full))
+number_flight
+
+# 6 hãng hàng không chiếm xấp xỉ 82% thị phần: 
+number_flight %>% mutate(cum_percent = cumsum(market_share)) # Giải thích tại sao? 
+
+number_flight %>% 
+  ungroup() %>% 
+  mutate(cum_percent = cumsum(market_share))
+
+# Số lượng các chuyến bay cất cánh từ các sân bay khác nhau: 
+fligh_df_full %>% 
+  group_by(origin) %>% 
+  count()
+
+# Số lượng các chuyến bay đến các sân bay khác nhau: 
+fligh_df_full %>% 
+  group_by(dest) %>% 
+  count() %>% 
+  ungroup() %>% 
+  arrange(-n) %>% 
+  slice(c(1:5, (nrow(.) - 5):nrow(.)))
+
+# Khoảng cách về Km: 
+fligh_df_full %<>% mutate(distance_km = distance / 0.62137)
+
+# Chuyến bay dài nhất và ngắn nhất: 
+fligh_df_full %>% 
+  filter(!duplicated(distance_km)) %>% 
+  arrange(-distance_km) %>% 
+  select(distance_km, carrier, everything()) ->> distance_df
+
+distance_df %>% head()
+distance_df %>% tail()
+
+# Bổ sung thêm dữ liệu về tháng - ngày trong tuần: 
+library(lubridate)
+
+fligh_df_full %<>%  
+  mutate(thang_c1 = month(time_hour, label = TRUE, abbr = TRUE), 
+         thang_c2 = month(time_hour, label = FALSE, abbr = FALSE), 
+         ngay = wday(time_hour, label = TRUE, abbr = TRUE))
+
+# Số các chuyến bay theo ngày trong tuần và tháng: 
+
+fligh_df_full %>% 
+  group_by(ngay) %>% 
+  count()
+
+fligh_df_full %>% 
+  group_by(thang_c1) %>% 
+  count()
+
+fligh_df_full %>% 
+  group_by(thang_c1, ngay) %>% 
+  count()
+
+fligh_df_full %>% 
+  group_by(thang_c1, ngay) %>% 
+  count() %>% 
+  ggplot(aes(ngay, n)) + 
+  geom_col() + 
+  facet_wrap(~ thang_c1)
+
+# Bổ sung thêm thông tin về long - lat cho bộ dữ liệu với sân bay đến
+# từ https://opendata.socrata.com/dataset/Airport-Codes-mapped-to-Latitude-Longitude-in-the-/rxrh-4cxm/data: 
+
+geo_data <- read.csv("D:/GSO_R_Course/data_for_wrangling/long_lat_airport.csv", 
+                     stringsAsFactors = FALSE)
+geo_data %>% head()
+
+# Đổi tên: 
+geo_data %<>% rename(dest = locationID)
+
+# So sánh qua: 
+geo_data %>% head()
+
+fligh_df_full %>% 
+  select(dest, everything()) %>% 
+  head()
+
+
+# Bổ sung dữ liệu địa lí: 
+
+fligh_df_full_long_lat <- inner_join(fligh_df_full, geo_data, by = "dest")
 
 #------------------------------------------------
-#       Mini Project 3 (Assignment) Porn Data
+#     Mini Project 3 (Assignment) Porn Data
 #------------------------------------------------
 
 # Load dữ liệu: 
@@ -351,7 +505,6 @@ porn_df %>% head()
 #       Mini Project 4 (Assignment) VHLSS 2016
 #        https://rpubs.com/chidungkt/350513
 #------------------------------------------------
-
 
 
 
