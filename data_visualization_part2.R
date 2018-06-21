@@ -257,8 +257,45 @@ df3 %>%
        title = "Rate of Use by Some U.S Largest Airlines in 2013 for JFK Airport", 
        caption = "Data Source: https://www.faa.gov/")
 
+#---------------------------------------
+#         Bổ sung Error Bar 
+#---------------------------------------
+  
+# Trước hết tính mean, stadard deviation:   
 
-  
-  
+iris_summary <- iris %>% 
+  group_by(Species) %>%   
+  summarise(mean_PL = mean(Petal.Length),
+            sd_PL = sd(Petal.Length))
+
+
+# Rồi vẽ: 
+iris_summary %>% 
+  ggplot(aes(Species, mean_PL)) + 
+  geom_col(width = 0.7) + 
+  geom_errorbar(aes(ymin = mean_PL - sd_PL, ymax = mean_PL + sd_PL), width = 0.15) 
+
+# Vẽ kiểu khác: 
+
+iris_summary %>% 
+  ggplot(aes(Species, mean_PL)) + 
+  geom_col(width = 0.6, color = "blue", fill = "blue", alpha = 0.3, size = 1) + 
+  geom_errorbar(aes(ymin = mean_PL - sd_PL, ymax = mean_PL + sd_PL), width = 0.15)
+
+# Một cách để thể hiện Bar Error là viết hàm. Cách này chỉ thích hợp
+# khi người sử dụng có một kiến thức nhất định về viết hàm như ở đây: 
+# http://www.sthda.com/english/wiki/ggplot2-error-bars-quick-start-guide-r-software-and-data-visualization
+# Một cách thức khác để hiển thị Error Bar là ở đây: 
+# http://www.cookbook-r.com/Graphs/Plotting_means_and_error_bars_(ggplot2)/
+
+
+# Một cách thức khác để có Error Bar là sử dụng một số package khác như ở: 
+# http://socviz.co/modeling.html#plots-from-complex-surveys. Tuy nhiên với 
+# với người học, việc sử dụng quá nhiều package là không nên vì mục tiêu 
+# là hiểu những gì mình làm. 
+
+# Một thách thức nhỏ: Thể hiện Bar Error cho 4 tiêu chí định lượng 
+# tương ứng với ba loài hoa diên vĩ bằng cách nào? 
+
 
 
