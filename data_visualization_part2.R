@@ -282,20 +282,81 @@ iris_summary %>%
   geom_col(width = 0.6, color = "blue", fill = "blue", alpha = 0.3, size = 1) + 
   geom_errorbar(aes(ymin = mean_PL - sd_PL, ymax = mean_PL + sd_PL), width = 0.15)
 
-# Một cách để thể hiện Bar Error là viết hàm. Cách này chỉ thích hợp
-# khi người sử dụng có một kiến thức nhất định về viết hàm như ở đây: 
-# http://www.sthda.com/english/wiki/ggplot2-error-bars-quick-start-guide-r-software-and-data-visualization
-# Một cách thức khác để hiển thị Error Bar là ở đây: 
-# http://www.cookbook-r.com/Graphs/Plotting_means_and_error_bars_(ggplot2)/
+
+# Dưới đây chúng ta sẽ hình ảnh hóa mức lương trung bình của 
+# từng khu vực địa lí theo hai nhóm chủng tộc chính ở Hoa Kì
+# đồng thời thể hiện error bar. Trước hết ta sử dụng bộ 
+# dữ liệu CPS1988 từ gói AER. Chú ý rằng không như tình huống
+# mà chúng ta vừa nghiên cứu, ở đây chúng ta đang muốn biểu
+# diễn mức lương trung bình theo đồng thời cả hai yếu tố 
+# định tính là: (1) khu vực, và (2) chủng tộc: 
+
+library("AER")
+data("CPS1988")
+
+# Tính toán mức lương trung bình cùng độ lệch chuẩn đồng 
+# thời tính error bar cộng trừ độ lệch chuẩn so với 
+# giá trị trung bình: 
+
+CPS1988 %>% 
+  group_by(region, ethnicity) %>% 
+  summarise(tb = mean(wage), 
+            lc = sd(wage)) %>% 
+  mutate(up = tb + lc, lo = tb - lc) ->> my_df
 
 
-# Một cách thức khác để có Error Bar là sử dụng một số package khác như ở: 
-# http://socviz.co/modeling.html#plots-from-complex-surveys. Tuy nhiên với 
-# với người học, việc sử dụng quá nhiều package là không nên vì mục tiêu 
-# là hiểu những gì mình làm. 
+# Vẽ phác thảo và thấy cái hình chưa được như ý muốn: 
+my_df %>% 
+  ggplot(aes(region, tb, fill = ethnicity)) + 
+  geom_col(position = "dodge") + 
+  geom_errorbar(aes(ymin = lo, ymax = up), position = "dodge", width = 0.25)
 
-# Một thách thức nhỏ: Thể hiện Bar Error cho 4 tiêu chí định lượng 
-# tương ứng với ba loài hoa diên vĩ bằng cách nào? 
+# Hiệu chỉnh lại như sau: 
+dodge <- position_dodge(width = 0.9)
+
+my_df %>% 
+  ggplot(aes(region, tb, fill = ethnicity)) + 
+  geom_col(position = dodge, alpha = 0.6) +
+  geom_errorbar(aes(ymin = lo, ymax = up), position = dodge, 
+                width = 0.25, color = "gray20") ->> p
+
+p
+
+# Hoặc một kiểu khác: 
+
+p + 
+  scale_fill_manual(values = c("#999999", "#E69F00")) + 
+  labs(x = NULL, y = NULL, 
+       title = "Mean Wage by US Region and Race with Error Bar", 
+       caption = "Data Source: Determinants of Wages Data (CPS 1988)")
+
+# Hoặc một kiểu khác nữa: 
+
+my_df %>% 
+  ggplot(aes(region, tb, fill = ethnicity, color = ethnicity)) + 
+  geom_col(position = dodge, alpha = 0.4, color = "grey50", size = 1) +
+  geom_errorbar(aes(ymin = lo, ymax = up), position = dodge, width = 0.15) ->> g
+
+g
+
+g + 
+  scale_fill_manual(values = c("#999999", "#E69F00")) + 
+  scale_color_manual(values = c("#999999", "#E69F00")) + 
+  labs(x = NULL, y = NULL, 
+       title = "Mean Wage by US Region and Race with Error Bar", 
+       caption = "Data Source: Determinants of Wages Data (CPS 1988)")
+  
+  
+g +   
+  scale_color_brewer(type = "qual", palette = "Dark2") +
+  scale_fill_brewer(type = "qual", palette = "Dark2") + 
+  labs(x = NULL, y = NULL, 
+       title = "Mean Wage by US Region and Race with Error Bar", 
+       caption = "Data Source: Determinants of Wages Data (CPS 1988)")
+
+
+
+
 
 
 
